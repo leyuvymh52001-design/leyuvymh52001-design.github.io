@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月度經營KPI一頁儀表 - AI 增強版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #141720;
+    --border:   #222638;
+    --accent:   #4f7fff;
+    --accent2:  #29e0a4;
+    --warn:     #f5a623;
+    --danger:   #e84545;
+    --text-1:   #e8eaf2;
+    --text-2:   #8a8fa8;
+    --text-3:   #555a72;
+    --radius:   10px;
+    --chat-width: 380px;
+    --chat-height: 500px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ─── 頂部標題列 ─── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 14px;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .header-title { font-size: 15px; font-weight: 500; }
+  .header-sub { font-size: 12px; color: var(--text-2); margin-top: 1px; }
+  .header-meta {
+    display: flex; align-items: center; gap: 20px;
+    font-size: 12px; color: var(--text-2);
+    font-family: 'DM Mono', monospace;
+  }
+  .badge {
+    background: rgba(79,127,255,.15);
+    color: var(--accent);
+    border: 1px solid rgba(79,127,255,.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* ─── 主內容區 ─── */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* ─── 區塊標題 ─── */
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .section-header::before {
+    content: '';
+    display: block;
+    width: 3px; height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .section-header h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  /* ─── KPI 卡片列 ─── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .kpi-card:hover { border-color: var(--accent); }
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79,127,255,.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 30px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .kpi-value.good  { color: var(--accent2); }
+  .kpi-value.warn  { color: var(--warn); }
+  .kpi-value.bad   { color: var(--danger); }
+  .kpi-value.blue  { color: var(--accent); }
+  .kpi-meta {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-2);
+  }
+  .mom {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .mom.up   { background: rgba(41,224,164,.12); color: var(--accent2); }
+  .mom.down { background: rgba(232,69,69,.12);  color: var(--danger); }
+  .mom.flat { background: rgba(138,143,168,.12); color: var(--text-2); }
+
+  /* ─── 進度條 ─── */
+  .progress-wrap { margin-top: 12px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-3);
+    margin-bottom: 5px;
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* ─── 圖表區 ─── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .chart-card h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .chart-card h3 span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ─── 底部兩欄 ─── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  /* ─── AI 摘要卡 ─── */
+  .ai-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .ai-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .ai-dot {
+    width: 8px; height: 8px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(.85); }
+  }
+  .ai-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+  .ai-tag {
+    margin-left: auto;
+    background: rgba(41,224,164,.1);
+    color: var(--accent2);
+    border: 1px solid rgba(41,224,164,.2);
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+  .ai-body { font-size: 13px; color: var(--text-1); line-height: 1.9; }
+  .ai-highlight {
+    background: rgba(79,127,255,.12);
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .ai-pos { color: var(--accent2); font-weight: 500; }
+  .ai-neg { color: var(--danger); font-weight: 500; }
+
+  /* ─── 資料整合流程卡 ─── */
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .flow-title {
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    margin-bottom: 18px;
+  }
+  .flow-steps { display: flex; flex-direction: column; gap: 0; }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .step-num {
+    width: 24px; height: 24px; flex-shrink: 0;
+    background: rgba(79,127,255,.15);
+    border: 1px solid rgba(79,127,255,.3);
+    color: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+  .step-body { flex: 1; }
+  .step-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .step-desc { font-size: 12px; color: var(--text-2); }
+  .step-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'DM Mono', monospace;
+  }
+  .tag-teal  { background: rgba(41,224,164,.1); color: var(--accent2); }
+  .tag-amber { background: rgba(245,166,35,.1);  color: var(--warn); }
+  .tag-blue  { background: rgba(79,127,255,.1);  color: var(--accent); }
+
+  /* ─── 資料表格 ─── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 28px;
+  }
+  .table-title {
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .row-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    background: var(--border);
+    color: var(--text-3);
+    padding: 2px 7px; border-radius: 3px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { transition: background .15s; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  tbody td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(34,38,56,.6);
+    font-family: 'DM Mono', monospace;
+  }
+  tbody td:first-child { font-family: 'Noto Sans TC', sans-serif; color: var(--text-2); }
+  .cell-good { color: var(--accent2); }
+  .cell-warn { color: var(--warn); }
+  .cell-bad  { color: var(--danger); }
+
+  /* ─── 架構圖區 (新升級版) ─── */
+  .arch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+  }
+  .arch-title { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 18px; grid-column: 1 / -1; }
+  
+  .diagram-container {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .diagram-container svg { width: 100%; height: auto; display: block; }
+  .diagram-container svg g[data-node] { cursor: pointer; }
+  .diagram-container svg g[data-node]:hover rect { filter: brightness(1.2); }
+  .diagram-container svg g[data-node].active rect { stroke-width: 2px !important; filter: brightness(1.3); }
+
+  .arch-info-panel {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+  .info-header-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .info-list-full {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .info-item-simple {
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-2);
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    line-height: 1.6;
+    cursor: pointer;
+  }
+  .info-item-simple:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .info-item-simple.active {
+    background: rgba(79,127,255,0.1);
+    border-color: var(--accent);
+    color: var(--text-1);
+  }
+  .info-item-simple strong {
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── footer ─── */
+  footer {
+    padding: 20px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ─── AI 對話窗樣式 ─── */
+  #chat-widget {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  #chat-button {
+    width: 56px;
+    height: 56px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    color: white;
+    font-size: 24px;
+  }
+
+  #chat-button:hover {
+    transform: scale(1.05);
+    background: #5f8eff;
+  }
+
+  #chat-window {
+    width: var(--chat-width);
+    height: var(--chat-height);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: none;
+    flex-direction: column;
+    margin-bottom: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  #chat-header {
+    padding: 15px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #chat-header h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .message {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .message.ai {
+    background: var(--border);
+    color: var(--text-1);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+  }
+
+  .message.user {
+    background: var(--accent);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+  }
+
+  #chat-input-area {
+    padding: 15px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+
+  #chat-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-1);
+    font-size: 13px;
+    outline: none;
+  }
+
+  #chat-input:focus {
+    border-color: var(--accent);
+  }
+
+  #send-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 15px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .typing-indicator {
+    font-style: italic;
+    color: var(--text-3);
+    font-size: 11px;
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  /* ─── 動畫 ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .kpi-card, .chart-card, .ai-card, .flow-card, .table-card, .arch-card {
+    animation: fadeUp .5s ease both;
+  }
+  .kpi-card:nth-child(1) { animation-delay: .05s; }
+  .kpi-card:nth-child(2) { animation-delay: .10s; }
+  .kpi-card:nth-child(3) { animation-delay: .15s; }
+  .kpi-card:nth-child(4) { animation-delay: .20s; }
+</style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header>
+  <div class="header-left">
+    <div class="logo-mark">KPI</div>
+    <div>
+      <div class="header-title">月度經營KPI一頁儀表</div>
+      <div class="header-sub">MGT-001 · 管理 / 財務 · 資料集：MGT-001.csv（60筆）</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span>報表月份：<strong style="color:var(--text-1)">2024年6月</strong></span>
+    <span class="badge">中等難度</span>
+  </div>
+</header>
+
+<!-- ─── Main ─── -->
+<main>
+
+  <!-- KPI 卡片 -->
+  <div class="section-header"><h2>本月核心指標</h2></div>
+  <div class="kpi-grid" id="kpi-data-section">
+
+    <div class="kpi-card">
+      <div class="kpi-label">月營收</div>
+      <div class="kpi-value blue">$4,820萬</div>
+      <div class="kpi-meta">
+        <span class="mom up">▲ +8.3%</span>
+        <span>vs 上月 $4,451萬</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>目標達成率</span><span>96.4%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:96.4%;background:var(--accent)"></div></div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">生產良率</div>
+      <div class="kpi-value good">94.7%</div>
+      <div class="kpi-meta">
+        <span class="mom up">▲ +1.2%</span>
+        <span>目標 ≥ 93.0%</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>達成率</span><span>101.8%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent2)"></div></div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">客訴件數</div>
+      <div class="kpi-value warn">18件</div>
+      <div class="kpi-meta">
+        <span class="mom down">▼ +5.9%</span>
+        <span>目標 ≤ 15件</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>超標幅度</span><span>+20%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:83%;background:var(--warn)"></div></div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">人均產值</div>
+      <div class="kpi-value good">$38.2萬</div>
+      <div class="kpi-meta">
+        <span class="mom up">▲ +3.6%</span>
+        <span>目標 $36.0萬</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>達成率</span><span>106.1%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent2)"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 趨勢圖 -->
+  <div class="section-header"><h2>趨勢分析</h2></div>
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <h3>營收 × 良率 六月趨勢 <span>Jan – Jun 2024</span></h3>
+      <div class="chart-wrap">
+        <canvas id="chartRevenue"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>客訴 × 人均產值 <span>同期比較</span></h3>
+      <div class="chart-wrap">
+        <canvas id="chartComplaint"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 底部兩欄 -->
+  <div class="bottom-grid">
+
+    <!-- AI 摘要 -->
+    <div class="ai-card">
+      <div class="ai-header">
+        <div class="ai-dot"></div>
+        <div class="ai-title">AI 本月經營重點摘要</div>
+        <div class="ai-tag">自動生成</div>
+      </div>
+      <div class="ai-body" id="ai-summary-text">
+        本月整體經營呈現<span class="ai-pos">穩健成長</span>態勢。<span class="ai-highlight">月營收 $4,820萬</span>較上月增長 8.3%，目標達成率逼近 96.4%，動能強勁。
+        <br><br>
+        生產面表現亮眼，<span class="ai-pos">良率 94.7%</span> 超越 93% 目標 1.8 個百分點，顯示製程品質持續優化。人力效率同步提升，人均產值達 $38.2萬，超標 6.1%。
+        <br><br>
+        主要警示點：<span class="ai-neg">客訴件數 18件</span>，較目標 15件超出 20%，較上月亦微幅上升，建議本月重點追蹤品質異常根本原因，搭配良率上升趨勢研判是否集中於特定產品線。
+        <br><br>
+        <strong style="color:var(--text-1)">建議行動</strong>：召開客訴專案會議，鎖定 TOP3 客訴類型，制定下月改善目標。
+      </div>
+    </div>
+
+    <!-- 資料整合流程 -->
+    <div class="flow-card">
+      <div class="flow-title">資料整合流程說明</div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="step-num">①</div>
+          <div class="step-body">
+            <div class="step-name">載入原始資料</div>
+            <div class="step-desc">MGT-001.csv · 60筆 · 月份、營收、良率、客訴數、人均產值</div>
+            <div class="step-tags">
+              <span class="tag tag-teal">營收表</span>
+              <span class="tag tag-teal">客訴表</span>
+              <span class="tag tag-teal">人力表</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">②</div>
+          <div class="step-body">
+            <div class="step-name">資料清洗</div>
+            <div class="step-desc">刪除重複值、補齊缺值、過濾金額/數量異常值</div>
+            <div class="step-tags">
+              <span class="tag tag-amber">刪:重複列</span>
+              <span class="tag tag-amber">刪:少數缺值</span>
+              <span class="tag tag-amber">刪:異常值</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">③</div>
+          <div class="step-body">
+            <div class="step-name">以月份為主鍵 Left Join</div>
+            <div class="step-desc">三表合併成寬表，month 作為唯一識別鍵</div>
+            <div class="step-tags">
+              <span class="tag tag-blue">left join × 2</span>
+              <span class="tag tag-blue">PK: 月份</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">④</div>
+          <div class="step-body">
+            <div class="step-name">衍生欄位計算</div>
+            <div class="step-desc">達成率 = 實績 / 目標 · MoM = (本月 − 上月) / 上月</div>
+            <div class="step-tags">
+              <span class="tag tag-blue">達成率</span>
+              <span class="tag tag-blue">MoM 環比</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">⑤</div>
+          <div class="step-body">
+            <div class="step-name">輸出至儀表 + AI 摘要</div>
+            <div class="step-desc">整合寬表送入 Chart.js 繪圖，並送 AI 生成文字摘要</div>
+            <div class="step-tags">
+              <span class="tag tag-teal">Chart.js 趨勢圖</span>
+              <span class="tag tag-teal">AI 摘要</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 整合後資料表 -->
+  <div class="section-header"><h2>整合後月度明細資料</h2></div>
+  <div class="table-card">
+    <div class="table-title">
+      整合寬表（月份為主鍵）
+      <span class="row-count">6 rows × 7 cols</span>
+    </div>
+    <table id="monthly-detail-table">
+      <thead>
+        <tr>
+          <th>月份</th>
+          <th>月營收（萬）</th>
+          <th>良率 %</th>
+          <th>客訴件數</th>
+          <th>人均產值（萬）</th>
+          <th>達成率 %</th>
+          <th>MoM 環比</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>2024-01</td><td>3,920</td><td class="cell-good">92.1</td><td class="cell-good">12</td><td>34.5</td><td class="cell-warn">78.4</td><td class="mom flat">–</td></tr>
+        <tr><td>2024-02</td><td>4,105</td><td class="cell-good">93.4</td><td class="cell-good">14</td><td>35.2</td><td class="cell-warn">82.1</td><td class="mom up">+4.7%</td></tr>
+        <tr><td>2024-03</td><td>4,280</td><td class="cell-good">93.8</td><td class="cell-warn">17</td><td>36.0</td><td class="cell-warn">85.6</td><td class="mom up">+4.3%</td></tr>
+        <tr><td>2024-04</td><td>4,390</td><td class="cell-good">94.0</td><td class="cell-warn">16</td><td>36.8</td><td class="cell-warn">87.8</td><td class="mom up">+2.6%</td></tr>
+        <tr><td>2024-05</td><td>4,451</td><td class="cell-good">93.5</td><td class="cell-good">17</td><td>36.9</td><td class="cell-warn">89.0</td><td class="mom up">+1.4%</td></tr>
+        <tr style="background:rgba(79,127,255,.05)"><td><strong>2024-06</strong></td><td class="cell-good"><strong>4,820</strong></td><td class="cell-good"><strong>94.7</strong></td><td class="cell-warn"><strong>18</strong></td><td class="cell-good"><strong>38.2</strong></td><td class="cell-good"><strong>96.4</strong></td><td class="mom up"><strong>+8.3%</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 架構流程 (新升級版) -->
+  <div class="section-header"><h2>系統架構流程</h2></div>
+  <div class="arch-card">
+    <div class="arch-title">點擊節點查看數據處理詳細步驟</div>
+    
+    <!-- 流程圖容器 -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 680 780" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#555a72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- ① 資料來源 -->
+        <g data-node="src1" data-key="src">
+          <rect x="50" y="70" width="150" height="52" rx="8" fill="rgba(41,224,164,0.1)" stroke="#29e0a4" stroke-width="0.8"/>
+          <text x="125" y="91" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">營收資料</text>
+          <text x="125" y="109" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#29e0a4">月份、營收、良率</text>
+        </g>
+        <g data-node="src2" data-key="src">
+          <rect x="265" y="70" width="150" height="52" rx="8" fill="rgba(41,224,164,0.1)" stroke="#29e0a4" stroke-width="0.8"/>
+          <text x="340" y="91" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">客訴資料</text>
+          <text x="340" y="109" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#29e0a4">客訴數、人均產值</text>
+        </g>
+        <g data-node="src3" data-key="src">
+          <rect x="480" y="70" width="150" height="52" rx="8" fill="rgba(41,224,164,0.1)" stroke="#29e0a4" stroke-width="0.8"/>
+          <text x="555" y="91" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">人力資料</text>
+          <text x="555" y="109" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#29e0a4">MGT-001.csv</text>
+        </g>
+
+        <line x1="125" y1="122" x2="125" y2="190" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+        <line x1="340" y1="122" x2="340" y2="190" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+        <line x1="555" y1="122" x2="555" y2="190" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+
+        <!-- ② 資料清洗 -->
+        <g data-node="c1" data-key="clean">
+          <rect x="50" y="192" width="150" height="44" rx="8" fill="rgba(245,166,35,0.1)" stroke="#f5a623" stroke-width="0.8"/>
+          <text x="125" y="214" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">刪除重複值</text>
+        </g>
+        <g data-node="c2" data-key="clean">
+          <rect x="265" y="192" width="150" height="44" rx="8" fill="rgba(245,166,35,0.1)" stroke="#f5a623" stroke-width="0.8"/>
+          <text x="340" y="214" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">補齊缺值</text>
+        </g>
+        <g data-node="c3" data-key="clean">
+          <rect x="480" y="192" width="150" height="44" rx="8" fill="rgba(245,166,35,0.1)" stroke="#f5a623" stroke-width="0.8"/>
+          <text x="555" y="214" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">異常值處理</text>
+        </g>
+
+        <line x1="125" y1="236" x2="125" y2="268" stroke="#555a72" stroke-width="1" stroke-dasharray="4 3" opacity=".5"/>
+        <line x1="340" y1="236" x2="340" y2="268" stroke="#555a72" stroke-width="1" stroke-dasharray="4 3" opacity=".5"/>
+        <line x1="555" y1="236" x2="555" y2="268" stroke="#555a72" stroke-width="1" stroke-dasharray="4 3" opacity=".5"/>
+        <line x1="125" y1="268" x2="555" y2="268" stroke="#555a72" stroke-width="1" opacity=".35"/>
+        <line x1="340" y1="268" x2="340" y2="300" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+
+        <!-- ③ 資料整合 -->
+        <g data-node="merge" data-key="merge">
+          <rect x="165" y="302" width="350" height="52" rx="8" fill="rgba(79,127,255,0.1)" stroke="#4f7fff" stroke-width="0.8"/>
+          <text x="340" y="321" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">彙整多源資料 (Left Join)</text>
+          <text x="340" y="340" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#4f7fff">營收 × 良率 × 客訴數 × 人均產值</text>
+        </g>
+
+        <line x1="340" y1="354" x2="340" y2="390" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+
+        <!-- ④ AI 功能 -->
+        <g data-node="ai" data-key="ai">
+          <rect x="165" y="397" width="350" height="52" rx="8" fill="rgba(232,69,69,0.1)" stroke="#e84545" stroke-width="0.8"/>
+          <text x="340" y="416" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">AI 生成「經營重點摘要」</text>
+          <text x="340" y="435" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#e84545">整合數據 → 自然語言洞察</text>
+        </g>
+
+        <line x1="340" y1="449" x2="340" y2="484" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+
+        <!-- ⑤ 趨勢分析 -->
+        <g data-node="viz" data-key="viz">
+          <rect x="165" y="492" width="350" height="52" rx="8" fill="rgba(79,127,255,0.1)" stroke="#4f7fff" stroke-width="0.8"/>
+          <text x="340" y="512" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="14" font-weight="500" fill="#e8eaf2">視覺化組件呈現</text>
+          <text x="340" y="530" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#4f7fff">Chart.js 趨勢圖 & KPI 指標卡</text>
+        </g>
+
+        <line x1="340" y1="544" x2="340" y2="580" stroke="#555a72" stroke-width="1.3" marker-end="url(#arr)"/>
+
+        <!-- ⑥ 最終輸出 -->
+        <g data-node="output" data-key="output">
+          <rect x="130" y="590" width="420" height="64" rx="10" fill="rgba(41,224,164,0.1)" stroke="#29e0a4" stroke-width="0.8"/>
+          <text x="340" y="613" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="15" font-weight="700" fill="#e8eaf2">月度經營KPI一頁儀表</text>
+          <text x="340" y="634" text-anchor="middle" dominant-baseline="central" font-family="'Noto Sans TC',sans-serif" font-size="12" fill="#29e0a4">管理層決策支援看板</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 說明面板 -->
+    <div class="arch-info-panel">
+      <div class="info-header-text">「月度經營KPI一頁儀表」的完整架構流程圖，共分六個層次：</div>
+      <div class="info-list-full">
+        <div class="info-item-simple" data-layer="src"><strong>1. 資料來源</strong> — 三類原始資料（營收、客訴、人力），對應 MGT-001.csv</div>
+        <div class="info-item-simple" data-layer="clean"><strong>2. 資料清洗</strong> — 刪除重複值、補齊缺值、過濾異常金額/數量</div>
+        <div class="info-item-simple" data-layer="merge"><strong>3. 資料整合</strong> — 將多源資料合併成統一格式（營收 × 良率 × 客訴 × 人均產值）</div>
+        <div class="info-item-simple" data-layer="ai"><strong>4. AI 功能</strong> — 根據整合資料自動生成「本月經營重點摘要」文字</div>
+        <div class="info-item-simple" data-layer="viz"><strong>5. 趨勢分析</strong> — 拆分為 Chart.js 趨勢圖與 KPI 指標卡兩個視覺化元件</div>
+        <div class="info-item-simple" data-layer="output"><strong>6. 最終輸出</strong> — 整合呈現為單一網頁儀表，供管理層、財務部門、跨部門共用</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- AI Chat Widget -->
+<div id="chat-widget">
+  <div id="chat-window">
+    <div id="chat-header">
+      <h4><span style="color:var(--accent2)">●</span> AI 營收助手</h4>
+      <span id="close-chat" style="cursor:pointer; color:var(--text-3);">✕</span>
+    </div>
+    <div id="chat-messages">
+      <div class="message ai">你好！我是你的 KPI 數據助手。你可以問我關於本月營收、良率或任何趨勢相關的問題。</div>
+    </div>
+    <div class="typing-indicator" id="typing">AI 正在思考中...</div>
+    <div id="chat-input-area">
+      <input type="text" id="chat-input" placeholder="請輸入您的問題..." />
+      <button id="send-btn">發送</button>
+    </div>
+  </div>
+  <div id="chat-button">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  </div>
+</div>
+
+<!-- ─── Footer ─── -->
+<footer>
+  <span>月度經營KPI一頁儀表 · MGT-001 · 難度：中等</span>
+  <span>資料筆數：60筆 · 欄位：月份、營收、良率、客訴數、人均產值 · 部門：管理 / 財務</span>
+</footer>
+
+<!-- ─── Chart.js ─── -->
+<script>
+const months = ['1月','2月','3月','4月','5月','6月'];
+
+// 圖表1: 營收趨勢 + 良率
+const ctxR = document.getElementById('chartRevenue').getContext('2d');
+new Chart(ctxR, {
+  data: {
+    labels: months,
+    datasets: [
+      {
+        type: 'bar',
+        label: '月營收（萬）',
+        data: [3920, 4105, 4280, 4390, 4451, 4820],
+        backgroundColor: 'rgba(79,127,255,.25)',
+        borderColor: 'rgba(79,127,255,.6)',
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: '良率 %',
+        data: [92.1, 93.4, 93.8, 94.0, 93.5, 94.7],
+        borderColor: '#29e0a4',
+        backgroundColor: 'rgba(41,224,164,.05)',
+        borderWidth: 2,
+        pointBackgroundColor: '#29e0a4',
+        pointRadius: 4,
+        tension: 0.35,
+        yAxisID: 'y2',
+        fill: true,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#8a8fa8', font: { size: 11 }, boxWidth: 12, padding: 16 } }
+    },
+    scales: {
+      x: { ticks: { color: '#555a72', font: { size: 11 } }, grid: { color: '#222638' } },
+      y: {
+        position: 'left',
+        ticks: { color: '#555a72', font: { size: 11 }, callback: v => v.toLocaleString() },
+        grid: { color: '#222638' },
+        title: { display: true, text: '萬元', color: '#555a72', font: { size: 10 } }
+      },
+      y2: {
+        position: 'right',
+        min: 88, max: 100,
+        ticks: { color: '#555a72', font: { size: 11 }, callback: v => v + '%' },
+        grid: { display: false },
+        title: { display: true, text: '良率', color: '#555a72', font: { size: 10 } }
+      }
+    }
+  }
+});
+
+// 圖表2: 客訴 + 人均產值
+const ctxC = document.getElementById('chartComplaint').getContext('2d');
+new Chart(ctxC, {
+  data: {
+    labels: months,
+    datasets: [
+      {
+        type: 'line',
+        label: '客訴件數',
+        data: [12, 14, 17, 16, 17, 18],
+        borderColor: '#f5a623',
+        backgroundColor: 'rgba(245,166,35,.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#f5a623',
+        pointRadius: 4,
+        tension: 0.35,
+        fill: true,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: '人均產值（萬）',
+        data: [34.5, 35.2, 36.0, 36.8, 36.9, 38.2],
+        borderColor: '#4f7fff',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointBackgroundColor: '#4f7fff',
+        pointRadius: 4,
+        borderDash: [4,3],
+        tension: 0.35,
+        yAxisID: 'y2',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#8a8fa8', font: { size: 11 }, boxWidth: 12, padding: 12 } }
+    },
+    scales: {
+      x: { ticks: { color: '#555a72', font: { size: 11 } }, grid: { color: '#222638' } },
+      y: {
+        position: 'left', min: 8, max: 24,
+        ticks: { color: '#555a72', font: { size: 11 }, stepSize: 4 },
+        grid: { color: '#222638' },
+        title: { display: true, text: '件', color: '#555a72', font: { size: 10 } }
+      },
+      y2: {
+        position: 'right', min: 30, max: 42,
+        ticks: { color: '#555a72', font: { size: 11 }, callback: v => v + '萬' },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+// ─── AI 對話邏輯 ───
+const chatButton = document.getElementById('chat-button');
+const chatWindow = document.getElementById('chat-window');
+const closeChat = document.getElementById('close-chat');
+const sendBtn = document.getElementById('send-btn');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+const typingIndicator = document.getElementById('typing');
+
+// TODO: 在這裡填入你的 API Key
+const API_KEY = 'AQ.Ab8RN6JO9sOYLs5KWByf9mReaS6fyLrPZ1tHoi508M8BDcZuVw'; 
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + API_KEY;
+
+chatButton.onclick = () => {
+  chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
+};
+
+closeChat.onclick = () => {
+  chatWindow.style.display = 'none';
+};
+
+function addMessage(text, isAi) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `message ${isAi ? 'ai' : 'user'}`;
+  msgDiv.innerText = text;
+  chatMessages.appendChild(msgDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// 提取頁面數據作為上下文
+function getPageContext() {
+  const kpiCards = document.querySelectorAll('.kpi-card');
+  let context = "以下是 2024年6月 的 KPI 經營數據報告內容：\n\n";
+  
+  kpiCards.forEach(card => {
+    const label = card.querySelector('.kpi-label').innerText;
+    const value = card.querySelector('.kpi-value').innerText;
+    const meta = card.querySelector('.kpi-meta').innerText;
+    context += `- ${label}: ${value} (${meta})\n`;
+  });
+
+  const aiSummary = document.getElementById('ai-summary-text').innerText;
+  context += `\nAI 摘要：${aiSummary}\n`;
+
+  const tableRows = document.querySelectorAll('#monthly-detail-table tbody tr');
+  context += "\n歷史明細數據 (2024-01 到 2024-06)：\n";
+  tableRows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const rowData = Array.from(cells).map(c => c.innerText).join(' | ');
+    context += `- ${rowData}\n`;
+  });
+
+  return context;
+}
+
+async function callAi(userText) {
+  if (API_KEY === 'YOUR_API_KEY_HERE') {
+    return "請在 HTML 代碼中設置您的 API Key 以啟用 AI 功能。";
+  }
+
+  const context = getPageContext();
+  const prompt = `你是這個 KPI 儀表板的專業分析助手。基於以下數據回答用戶問題：\n\n${context}\n\n用戶問題：${userText}\n請簡潔、專業地回答。`;
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error calling AI:', error);
+    return "抱歉，目前無法連接到 AI 服務，請檢查網絡或 API Key。";
+  }
+}
+
+async function handleSend() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  addMessage(text, false);
+  chatInput.value = '';
+  
+  typingIndicator.style.display = 'block';
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  const aiResponse = await callAi(text);
+  
+  typingIndicator.style.display = 'none';
+  addMessage(aiResponse, true);
+}
+
+sendBtn.onclick = handleSend;
+chatInput.onkeypress = (e) => { if (e.key === 'Enter') handleSend(); };
+
+// ─── 流程圖互動邏輯 ───
+document.querySelectorAll('.diagram-container g[data-node]').forEach(g => {
+  g.addEventListener('click', () => {
+    const key = g.dataset.key;
+    
+    // 高亮右側對應的列表項
+    document.querySelectorAll('.info-item-simple').forEach(el => el.classList.remove('active'));
+    const target = document.querySelector(`.info-item-simple[data-layer="${key}"]`);
+    if (target) target.classList.add('active');
+
+    // 切換 SVG 節點的 active 狀態
+    document.querySelectorAll('.diagram-container g[data-node]').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll(`.diagram-container g[data-key="${key}"]`).forEach(n => n.classList.add('active'));
+  });
+});
+
+// 讓列表項也可以點擊
+document.querySelectorAll('.info-item-simple').forEach(item => {
+  item.addEventListener('click', () => {
+    const layer = item.dataset.layer;
+    
+    // 高亮列表項
+    document.querySelectorAll('.info-item-simple').forEach(el => el.classList.remove('active'));
+    item.classList.add('active');
+
+    // 切換 SVG 節點的 active 狀態
+    document.querySelectorAll('.diagram-container g[data-node]').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll(`.diagram-container g[data-key="${layer}"]`).forEach(n => n.classList.add('active'));
+  });
+});
+</script>
+</body>
+</html>
